@@ -1,5 +1,5 @@
 // Offline cache for Gummy Sudoku. Bump VERSION when files change.
-const VERSION = 'gummy-sudoku-v9';
+const VERSION = 'gummy-sudoku-v10';
 const FILES = [
   './',
   'index.html',
@@ -16,19 +16,21 @@ const FILES = [
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
-    caches
-      .open(VERSION)
-      .then((c) => c.addAll(FILES))
-      .then(() => self.skipWaiting()),
+    (async () => {
+      const cache = await caches.open(VERSION);
+      await cache.addAll(FILES);
+      await self.skipWaiting();
+    })(),
   );
 });
 
 self.addEventListener('activate', (e) => {
   e.waitUntil(
-    caches
-      .keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== VERSION).map((k) => caches.delete(k))))
-      .then(() => self.clients.claim()),
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(keys.filter((k) => k !== VERSION).map((k) => caches.delete(k)));
+      await self.clients.claim();
+    })(),
   );
 });
 
@@ -36,16 +38,15 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
   e.respondWith(
-    caches.match(e.request).then(
-      (hit) =>
-        hit ||
-        fetch(e.request).then((res) => {
-          if (res.ok && /fonts\.(googleapis|gstatic)\.com/.test(e.request.url)) {
-            const copy = res.clone();
-            caches.open(VERSION).then((c) => c.put(e.request, copy));
-          }
-          return res;
-        }),
-    ),
+    (async () => {
+      const hit = await caches.match(e.request);
+      if (hit) return hit;
+      const res = await fetch(e.request);
+      if (res.ok && /fonts\.(googleapis|gstatic)\.com/.test(e.request.url)) {
+        const cache = await caches.open(VERSION);
+        e.waitUntil(cache.put(e.request, res.clone()));
+      }
+      return res;
+    })(),
   );
 });

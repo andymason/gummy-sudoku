@@ -637,17 +637,18 @@
       }
 
       /* overlays */
+      /* native modal <dialog>s; the .card inside is the visible box */
       .overlay {
-        position: fixed;
-        inset: 0;
-        z-index: 20;
-        background: var(--scrim);
-        display: grid;
-        place-items: center;
-        padding-inline: 16px;
-        padding-block: max(16px, env(safe-area-inset-top, 0px))
-          max(16px, env(safe-area-inset-bottom, 0px));
+        width: min(440px, 100% - 32px);
+        max-width: none;
+        max-height: calc(100dvh - 32px);
+        padding: 0;
+        border: 0;
+        background: none;
         overflow-y: auto;
+      }
+      .overlay::backdrop {
+        background: var(--scrim);
       }
       .card {
         position: relative;
@@ -655,8 +656,6 @@
         color: var(--ink);
         border-radius: 22px;
         padding: 20px 18px 18px;
-        width: 100%;
-        max-width: 440px;
         box-shadow: var(--shadow);
         display: grid;
         gap: 12px;
@@ -1117,8 +1116,8 @@
     </svg>
 
     <!-- How to play -->
-    <div class="overlay" id="help" hidden>
-      <div class="card" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+    <dialog class="overlay" id="help" aria-labelledby="helpTitle">
+      <div class="card">
         <button class="ibtn x" type="button" data-close aria-label="Close">
           <svg aria-hidden="true"><use href="#i-x" /></svg>
         </button>
@@ -1150,13 +1149,13 @@
           </p>
           <p>Gummies with a small dot were there from the start.</p>
         </div>
-        <button class="btn primary" type="button" data-close>Let's play</button>
+        <button class="btn primary" type="button" data-close autofocus>Let's play</button>
       </div>
-    </div>
+    </dialog>
 
     <!-- Settings -->
-    <div class="overlay" id="settings" hidden>
-      <div class="card" role="dialog" aria-modal="true" aria-labelledby="setTitle">
+    <dialog class="overlay" id="settings" aria-labelledby="setTitle">
+      <div class="card">
         <button class="ibtn x" type="button" data-close aria-label="Close">
           <svg aria-hidden="true"><use href="#i-x" /></svg>
         </button>
@@ -1177,11 +1176,11 @@
           /></label>
         </div>
       </div>
-    </div>
+    </dialog>
 
     <!-- New game -->
-    <div class="overlay" id="newgame" hidden>
-      <form class="card" id="newForm" role="dialog" aria-modal="true" aria-labelledby="newTitle">
+    <dialog class="overlay" id="newgame" aria-labelledby="newTitle">
+      <form class="card" id="newForm" method="dialog">
         <button class="ibtn x" type="button" data-close id="newClose" aria-label="Close">
           <svg aria-hidden="true"><use href="#i-x" /></svg>
         </button>
@@ -1213,22 +1212,22 @@
           >
           <label><input type="radio" name="diff" id="diffH" value="hard" /><span>Hard</span></label>
         </div>
-        <button class="btn primary" type="submit">Start</button>
+        <button class="btn primary" type="submit" autofocus>Start</button>
       </form>
-    </div>
+    </dialog>
 
     <!-- Win -->
-    <div class="overlay" id="win" hidden>
-      <div class="card win" role="dialog" aria-modal="true" aria-labelledby="winTitle">
+    <dialog class="overlay" id="win" aria-labelledby="winTitle">
+      <div class="card win">
         <h2 id="winTitle">Sweet!</h2>
         <p id="winText">You filled the whole board.</p>
         <div class="cardrow" style="width: 100%">
           <button class="btn" type="button" id="winChange">Change game</button>
-          <button class="btn primary" type="button" id="winAgain">Play again</button>
+          <button class="btn primary" type="button" id="winAgain" autofocus>Play again</button>
         </div>
       </div>
-    </div>
-    <canvas id="confetti" hidden></canvas>
+      <canvas id="confetti" hidden></canvas>
+    </dialog>
 
     <script type="module" src="src/app.js"></script>
   </body>

@@ -19,14 +19,24 @@ import {
 
 const src = (v) => `icons/gummies/${GUMMIES[v - 1].id}.svg`;
 const CHEERS = ['Sweet!', 'Tasty!', 'Delicious!', 'Divine!', 'Yummy!'];
-const STORE_KEY = 'gummy-sudoku-v1';
+const STORE_KEY = 'gummy-sudoku-v2';
+const HINT_MS = 6000; // how long a hint stays before fading away
+const WRONG_MS = 3500; // how long wrong gummies stay circled
 
 const $ = (s) => document.querySelector(s);
-const boardEl = $('#board'),
-  paletteEl = $('#palette'),
-  msgEl = $('#msg');
+const boardEl = $('#board');
+const paletteEl = $('#palette');
+const msgEl = $('#msg');
+const undoBtn = $('#undoBtn');
+const redoBtn = $('#redoBtn');
+const maybeBtn = $('#maybeBtn');
+const hintBtn = $('#hintBtn');
+const checkBtn = $('#checkBtn');
+const dialogs = [...document.querySelectorAll('dialog')];
+
 const cap = (s) => s[0].toUpperCase() + s.slice(1);
-const pick = (a) => a[(Math.random() * a.length) | 0];
+const pick = (a) => a[Math.floor(Math.random() * a.length)];
+const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 // ---------- storage (optional; the game works without it) ----------
 function load() {
@@ -43,23 +53,22 @@ function save() {
 }
 
 // ---------- state ----------
-let S = null; // game: n, diff, solution, board, given, history, won
+let S = null; // game: n, diff, solution, board, given, notes, history, future, won
 let geo = null;
-// helperSet: the player chose the helper setting themselves (older saves stored the old default of on)
-const settings = { helper: false, helperSet: false, sound: true, seenHelp: false };
+const settings = { helper: false, sound: true, seenHelp: false };
 let selected = null; // gummy-first mode: 1..n, 0 = take out, null = off
 let activeCell = null; // square-first mode: the square waiting for a gummy
 let focusIdx = 0; // keyboard position on the board
 let notesMode = false; // Maybe mode: gummies become small corner reminders
 let hintAt = null; // { i, v, fading } ghost shown by the Hint button
-let hintTimer = 0,
-  hintMsg = '';
-const HINT_MS = 6000; // how long a hint stays before fading away
-let flashWrong = new Set();
+let hintTimer = 0;
+let hintMsg = '';
+const flashWrong = new Set();
 let wrongTimer = 0;
 
-const locked = (i) => S.given[i] || !!(S.hinted && S.hinted[i]); // `hinted` only exists in old saves
+const locked = (i) => S.given[i];
 const countOf = (v) => S.board.filter((x) => x === v).length;
+const isSolved = () => S.board.every((x, k) => x === S.solution[k]);
 
 function snapshot() {
   return { game: S, settings, selected, activeCell, focusIdx, notesMode };
@@ -71,7 +80,7 @@ function newGame(n, diff) {
     n,
     diff,
     solution,
-    board: puzzle.slice(),
+    board: [...puzzle],
     given: puzzle.map((v) => v > 0),
     notes: puzzle.map(() => 0),
     history: [],
@@ -95,10 +104,10 @@ function setup() {
   const { n, br, bc } = geo;
   boardEl.style.setProperty('--n', n);
   boardEl.style.setProperty('--nk', n === 9 ? 1 : n === 6 ? 0.85 : 0.7);
-  boardEl.innerHTML = '';
+  const cells = [];
   for (let i = 0; i < n * n; i++) {
-    const r = geo.rowOf(i),
-      c = geo.colOf(i);
+    const r = geo.rowOf(i);
+    const c = geo.colOf(i);
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'cell';
@@ -114,27 +123,17 @@ function setup() {
     note.className = 'notes';
     note.alt = '';
     note.hidden = true;
-    boardEl.appendChild(b);
+    cells.push(b);
   }
-  paletteEl.innerHTML = '';
+  boardEl.replaceChildren(...cells);
   const items = n + 1;
   paletteEl.style.setProperty('--pc', items <= 7 ? items : Math.ceil(items / 2));
+  let palette = '';
   for (let v = 1; v <= n; v++) {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'pbtn';
-    b.dataset.v = v;
-    b.innerHTML = `<img src="${src(v)}" alt=""><span class="badge"></span>`;
-    paletteEl.appendChild(b);
+    palette += `<button type="button" class="pbtn" data-v="${v}"><img src="${src(v)}" alt=""><span class="badge"></span></button>`;
   }
-  const er = document.createElement('button');
-  er.type = 'button';
-  er.className = 'pbtn eraser';
-  er.dataset.v = 0;
-  er.setAttribute('aria-label', 'Take a gummy out');
-  er.title = 'Take a gummy out';
-  er.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 21-4.3-4.3a1 1 0 0 1 0-1.4l10-10a1 1 0 0 1 1.4 0l5.6 5.6a1 1 0 0 1 0 1.4L11 21z"/><path d="M22 21H7M5 11l9 9"/></svg>`;
-  paletteEl.appendChild(er);
+  palette += `<button type="button" class="pbtn eraser" data-v="0" aria-label="Take a gummy out" title="Take a gummy out"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7 21-4.3-4.3a1 1 0 0 1 0-1.4l10-10a1 1 0 0 1 1.4 0l5.6 5.6a1 1 0 0 1 0 1.4L11 21z"/><path d="M22 21H7M5 11l9 9"/></svg></button>`;
+  paletteEl.innerHTML = palette;
   $('#mode').textContent = `${SIZE_NAMES[n]} · ${cap(S.diff)}`;
   render();
 }
@@ -147,13 +146,13 @@ function render() {
   // gummy to highlight around the board: the chosen one, or the one in the active square
   const focusGummy = selected > 0 ? selected : act !== null ? S.board[act] : 0;
   for (let i = 0; i < cells.length; i++) {
-    const el = cells[i],
-      v = S.board[i],
-      img = el.firstChild;
-    let blocked = false,
-      ghost = false,
-      shown = v;
-    const isHint = !!hintAt && hintAt.i === i && !v;
+    const el = cells[i];
+    const v = S.board[i];
+    const [img, noteImg] = el.children;
+    let blocked = false;
+    let ghost = false;
+    let shown = v;
+    const isHint = hintAt?.i === i && !v;
     if (isHint) shown = hintAt.v;
     else if (settings.helper && selected > 0 && !v) {
       blocked = geo.peers[i].some((p) => S.board[p] === selected);
@@ -172,29 +171,26 @@ function render() {
     el.classList.toggle('blocked', blocked);
     el.classList.toggle('ghost', ghost);
     el.classList.toggle('hint', isHint);
-    el.classList.toggle('fading', isHint && !!hintAt.fading);
+    el.classList.toggle('fading', isHint && hintAt.fading);
     el.classList.toggle('active', i === act);
-    el.classList.toggle('peer', !!actPeers && actPeers.has(i));
+    el.classList.toggle('peer', !!actPeers?.has(i));
     el.classList.toggle('same', !!v && v === focusGummy && i !== act);
     el.classList.toggle('bad', bad.has(i));
     el.classList.toggle('wrong', flashWrong.has(i));
     el.tabIndex = i === focusIdx ? 0 : -1;
-    const where = `row ${geo.rowOf(i) + 1}, column ${geo.colOf(i) + 1}`;
-    el.setAttribute(
-      'aria-label',
-      v ? `${nameOf(v)}, ${where}${locked(i) ? ', fixed' : ''}` : `empty, ${where}`,
-    );
-    el.setAttribute('aria-selected', String(i === act));
-    const mask = v ? 0 : S.notes[i],
-      box = el.children[1];
-    if (+box.dataset.mask !== mask) {
-      box.dataset.mask = mask;
-      const k = noteOf(mask); // one maybe per square
-      if (k) box.src = src(k);
-      else box.removeAttribute('src');
-      box.hidden = !k;
+    const note = v ? 0 : noteOf(S.notes[i]); // one maybe per square
+    if (+noteImg.dataset.v !== note) {
+      noteImg.dataset.v = note;
+      if (note) noteImg.src = src(note);
+      else noteImg.removeAttribute('src');
+      noteImg.hidden = !note;
     }
-    if (mask) el.setAttribute('aria-label', `empty, maybe ${noteNames(mask)}, ${where}`);
+    const where = `row ${geo.rowOf(i) + 1}, column ${geo.colOf(i) + 1}`;
+    let label = `empty, ${where}`;
+    if (v) label = `${nameOf(v)}, ${where}${locked(i) ? ', fixed' : ''}`;
+    else if (note) label = `empty, maybe ${nameOf(note)}, ${where}`;
+    el.setAttribute('aria-label', label);
+    el.setAttribute('aria-selected', String(i === act));
   }
   // in square-first mode, grey out gummies that can't go in the active square
   const nope =
@@ -207,23 +203,24 @@ function render() {
     if (v > 0) {
       const left = S.n - countOf(v);
       b.classList.toggle('done', left <= 0);
-      b.classList.toggle('nope', !!nope && nope.has(v));
+      b.classList.toggle('nope', !!nope?.has(v));
       b.querySelector('.badge').textContent = left <= 0 ? '✓' : left;
       b.setAttribute('aria-label', `${nameOf(v)}, ${left <= 0 ? 'all placed' : left + ' left'}`);
     }
   }
-  $('#undoBtn').disabled = !S.history.length || S.won;
-  $('#redoBtn').disabled = !S.future.length || S.won;
-  $('#maybeBtn').setAttribute('aria-pressed', String(notesMode));
-  $('#maybeBtn').disabled = S.won;
+  undoBtn.disabled = !S.history.length || S.won;
+  redoBtn.disabled = !S.future.length || S.won;
+  maybeBtn.setAttribute('aria-pressed', String(notesMode));
+  maybeBtn.disabled = S.won;
   $('#maybePill').textContent = notesMode ? 'ON' : 'OFF';
   $('#tray').classList.toggle('notes', notesMode);
-  $('#hintBtn').disabled = $('#checkBtn').disabled = S.won;
+  hintBtn.disabled = S.won;
+  checkBtn.disabled = S.won;
 }
 
 function say(text, mood = '') {
   msgEl.textContent = text;
-  msgEl.className = 'msg' + (mood ? ' ' + mood : '');
+  msgEl.className = mood ? `msg ${mood}` : 'msg';
 }
 
 // ---------- sound ----------
@@ -231,11 +228,11 @@ let actx = null;
 function tone(freq, dur = 0.12, type = 'sine', vol = 0.12, when = 0) {
   if (!settings.sound) return;
   try {
-    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    actx ??= new AudioContext();
     if (actx.state === 'suspended') actx.resume();
-    const t = actx.currentTime + when,
-      o = actx.createOscillator(),
-      g = actx.createGain();
+    const t = actx.currentTime + when;
+    const o = actx.createOscillator();
+    const g = actx.createGain();
     o.type = type;
     o.frequency.setValueAtTime(freq, t);
     o.frequency.exponentialRampToValueAtTime(freq * 1.4, t + dur);
@@ -246,10 +243,10 @@ function tone(freq, dur = 0.12, type = 'sine', vol = 0.12, when = 0) {
     o.stop(t + dur + 0.03);
   } catch {}
 }
-const sPop = (v) => tone(392 * Math.pow(2, ((v - 1) * 2) / 12), 0.12, 'triangle', 0.14);
+const sPop = (v) => tone(392 * 2 ** (((v - 1) * 2) / 12), 0.12, 'triangle', 0.14);
 const sSweet = (v) => {
-  tone(660 * Math.pow(2, (v - 1) / 12), 0.09, 'sine', 0.1);
-  tone(990 * Math.pow(2, (v - 1) / 12), 0.14, 'sine', 0.08, 0.07);
+  tone(660 * 2 ** ((v - 1) / 12), 0.09, 'sine', 0.1);
+  tone(990 * 2 ** ((v - 1) / 12), 0.14, 'sine', 0.08, 0.07);
 };
 const sTap = () => tone(660, 0.05, 'sine', 0.05);
 const sBad = () => {
@@ -257,31 +254,37 @@ const sBad = () => {
   tone(140, 0.22, 'square', 0.05, 0.1);
 };
 const sChime = () =>
-  [0, 4, 7, 12].forEach((s, k) => tone(523 * Math.pow(2, s / 12), 0.16, 'sine', 0.1, k * 0.07));
+  [0, 4, 7, 12].forEach((s, k) => tone(523 * 2 ** (s / 12), 0.16, 'sine', 0.1, k * 0.07));
 const sWin = () =>
   [0, 4, 7, 12, 7, 12, 16, 19].forEach((s, k) =>
-    tone(523 * Math.pow(2, s / 12), 0.22, 'triangle', 0.1, k * 0.1),
+    tone(523 * 2 ** (s / 12), 0.22, 'triangle', 0.1, k * 0.1),
   );
 
 // ---------- effects ----------
+// Restarts a CSS animation class on each square, removing it after `ms`.
 function pulse(indices, cls, ms) {
   for (const i of indices) {
     const el = boardEl.children[i];
     el.classList.remove(cls);
-    void el.offsetWidth;
+    void el.offsetWidth; // reflow, so re-adding the class replays the animation
     el.classList.add(cls);
     setTimeout(() => el.classList.remove(cls), ms);
   }
 }
 
-// ---------- moves ----------
-const noteNames = (mask) =>
-  [...Array(S.n)]
-    .map((_, k) => k + 1)
-    .filter((k) => mask & (1 << k))
-    .map(nameOf)
-    .join(' or ');
+// Circles wrong gummies in red for a moment.
+function showWrong(indices) {
+  flashWrong.clear();
+  for (const i of indices) flashWrong.add(i);
+  render();
+  clearTimeout(wrongTimer);
+  wrongTimer = setTimeout(() => {
+    flashWrong.clear();
+    render();
+  }, WRONG_MS);
+}
 
+// ---------- moves ----------
 // Every change goes through record(), so Undo and Redo cover gummies and maybes alike.
 function record(i, to, noteChanges) {
   const entry = makeEntry(S.board, S.notes, i, to, noteChanges);
@@ -326,7 +329,7 @@ function place(i, v) {
     pulse([i], 'placed', 300);
     sPop(v);
   }
-  if (S.board.every((x, k) => x === S.solution[k])) {
+  if (isSolved()) {
     win();
     save();
     return;
@@ -354,8 +357,8 @@ function toggleNote(i, v) {
     say('Take the gummy out first, then you can add a maybe.');
     return;
   }
-  const had = S.notes[i],
-    after = had === 1 << v ? 0 : 1 << v; // one maybe per square
+  const had = S.notes[i];
+  const after = had === 1 << v ? 0 : 1 << v; // one maybe per square
   record(i, 0, new Map([[i, after]]));
   clearHint();
   tone(after ? 880 : 520, 0.06, 'sine', 0.06);
@@ -395,12 +398,9 @@ function toggleNotesMode() {
 
 // A small, sweet reward for a gummy in exactly the right place.
 function yum(i) {
+  pulse([i], 'yum', 600);
+  if (reducedMotion()) return;
   const el = boardEl.children[i];
-  el.classList.remove('yum');
-  void el.offsetWidth;
-  el.classList.add('yum');
-  setTimeout(() => el.classList.remove('yum'), 600);
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const burst = document.createElement('span');
   burst.className = 'burst';
   burst.style.setProperty('--d', `${Math.round(el.clientWidth * 0.8)}px`);
@@ -445,7 +445,7 @@ function fadeHint() {
 function tapCell(i) {
   focusIdx = i;
   if (S.won) return;
-  const wasHint = !!hintAt && hintAt.i === i;
+  const wasHint = hintAt?.i === i;
   clearHint();
   const v = S.board[i];
 
@@ -528,11 +528,8 @@ function pickGummy(v) {
 }
 
 function undo() {
+  if (S.won || !S.history.length) return;
   const h = S.history.pop();
-  if (!h || S.won) {
-    if (h) S.history.push(h);
-    return;
-  }
   applyEntry(S.board, S.notes, h, false);
   S.future.push(h);
   clearHint();
@@ -544,11 +541,8 @@ function undo() {
 }
 
 function redo() {
+  if (S.won || !S.future.length) return;
   const h = S.future.pop();
-  if (!h || S.won) {
-    if (h) S.future.push(h);
-    return;
-  }
   applyEntry(S.board, S.notes, h, true);
   S.history.push(h);
   clearHint();
@@ -556,31 +550,23 @@ function redo() {
   render();
   pulse([h.i], 'placed', 300);
   say('Redone.');
+  if (isSolved()) win();
   save();
-  if (S.board.every((x, k) => x === S.solution[k])) win();
 }
 
 // Shows (never fills) the next logical gummy, with the reason why it goes there.
 function hint() {
   if (S.won) return;
   clearHint();
-  flashWrong.clear();
   const h = findHint(S.board, S.solution, geo, locked);
   if (!h) return;
+  selected = null;
+  notesMode = false;
+  activeCell = focusIdx = h.i;
   if (h.type === 'wrong') {
-    const wrong = h.i;
-    flashWrong.add(wrong);
-    selected = null;
-    notesMode = false;
-    activeCell = focusIdx = wrong;
-    render();
-    clearTimeout(wrongTimer);
-    wrongTimer = setTimeout(() => {
-      flashWrong.clear();
-      render();
-    }, 3500);
+    showWrong([h.i]);
     sBad();
-    say(`This ${nameOf(S.board[wrong])} is in the wrong square. Try taking it out.`, 'bad');
+    say(`This ${nameOf(S.board[h.i])} is in the wrong square. Try taking it out.`, 'bad');
     return;
   }
   const why = {
@@ -589,9 +575,7 @@ function hint() {
     answer: `Try ${aName(h.v)} here.`,
   }[h.type];
   hintAt = { i: h.i, v: h.v, fading: false };
-  selected = null;
-  notesMode = false;
-  activeCell = focusIdx = h.i;
+  flashWrong.clear();
   hintMsg = `${why} Tap the ${nameOf(h.v)} to put it in.`;
   render();
   sChime();
@@ -602,11 +586,9 @@ function hint() {
 
 function check() {
   if (S.won) return;
-  flashWrong = new Set();
-  S.board.forEach((v, i) => {
-    if (v && !locked(i) && v !== S.solution[i]) flashWrong.add(i);
-  });
-  const k = flashWrong.size;
+  const wrong = S.board.flatMap((v, i) => (v && !locked(i) && v !== S.solution[i] ? [i] : []));
+  showWrong(wrong);
+  const k = wrong.length;
   if (!k) {
     sChime();
     say('Everything so far is right. Keep going!', 'ok');
@@ -617,12 +599,6 @@ function check() {
       'bad',
     );
   }
-  render();
-  clearTimeout(wrongTimer);
-  wrongTimer = setTimeout(() => {
-    flashWrong.clear();
-    render();
-  }, 3500);
 }
 
 // ---------- win ----------
@@ -641,20 +617,20 @@ function win() {
   pulse([...Array(S.n * S.n).keys()], 'sparkle', 760);
   sWin();
   setTimeout(() => {
-    show('#win');
+    show($('#win'));
     confetti();
   }, 650);
 }
 
 function confetti() {
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  const cv = $('#confetti'),
-    ctx = cv.getContext('2d');
-  const dpr = Math.min(devicePixelRatio || 1, 2);
+  if (reducedMotion()) return;
+  const cv = $('#confetti');
+  const ctx = cv.getContext('2d');
+  const dpr = Math.min(devicePixelRatio, 2);
   cv.hidden = false;
-  const W = (cv.width = innerWidth * dpr),
-    H = (cv.height = innerHeight * dpr);
-  const imgs = GUMMIES.slice(0, S.n).map((c, k) => {
+  const W = (cv.width = innerWidth * dpr);
+  const H = (cv.height = innerHeight * dpr);
+  const imgs = GUMMIES.slice(0, S.n).map((_, k) => {
     const im = new Image();
     im.src = src(k + 1);
     return im;
@@ -664,7 +640,7 @@ function confetti() {
     y: -Math.random() * H * 0.8 - 40 * dpr,
     vx: (Math.random() - 0.5) * 2 * dpr,
     vy: (2 + Math.random() * 3) * dpr,
-    a: Math.random() * 6.28,
+    a: Math.random() * Math.PI * 2,
     va: (Math.random() - 0.5) * 0.2,
     s: (26 + Math.random() * 26) * dpr,
     im: pick(imgs),
@@ -691,48 +667,22 @@ function confetti() {
   })(t0);
 }
 
-// ---------- overlays ----------
-let lastFocus = null;
-const openOverlay = () => ['#help', '#settings', '#newgame', '#win'].find((id) => !$(id).hidden);
-function show(sel) {
-  lastFocus = document.activeElement;
-  const o = $(sel);
-  o.hidden = false;
-  (
-    o.querySelector('input:checked') ||
-    o.querySelector('.btn.primary') ||
-    o.querySelector('button')
-  ).focus();
-}
-function hide(sel) {
-  if (sel === '#help') {
-    settings.seenHelp = true;
-    save();
-  }
-  $(sel).hidden = true;
-  if (lastFocus && lastFocus.focus) lastFocus.focus();
-}
-const canDismiss = (sel) => sel !== '#win' && !(sel === '#newgame' && S.won);
+// ---------- dialogs ----------
+// Native modal <dialog>s: the browser traps focus, makes the page inert and
+// puts focus back where it was on close.
+const show = (dialog) => dialog.open || dialog.showModal();
+// The win screen, and New game after a win, need a choice before going away.
+const canDismiss = (dialog) => dialog.id !== 'win' && !(dialog.id === 'newgame' && S.won);
 
+const helpImg = (v, cls = '') => `<img src="${src(v)}" alt="${nameOf(v)}"${cls}>`;
 function buildHelp() {
-  const n = Math.min(S ? S.n : 4, 6);
-  const good = $('#exGood'),
-    bad = $('#exBad');
-  good.innerHTML = '';
-  bad.innerHTML = '';
-  for (let v = 1; v <= n; v++)
-    good.insertAdjacentHTML('beforeend', `<img src="${src(v)}" alt="${nameOf(v)}">`);
-  good.insertAdjacentHTML('beforeend', '<span class="mark y" aria-label="correct">✓</span>');
-  [1, 2, 1, 3].forEach((v) =>
-    bad.insertAdjacentHTML(
-      'beforeend',
-      `<img src="${src(v)}" alt="${nameOf(v)}"${v === 1 ? ' class="dup"' : ''}>`,
-    ),
-  );
-  bad.insertAdjacentHTML(
-    'beforeend',
-    '<span class="mark n" aria-label="wrong">✗</span><small>two gummy bears in one row</small>',
-  );
+  const n = Math.min(S?.n ?? 4, 6);
+  $('#exGood').innerHTML =
+    Array.from({ length: n }, (_, k) => helpImg(k + 1)).join('') +
+    '<span class="mark y" aria-label="correct">✓</span>';
+  $('#exBad').innerHTML =
+    [1, 2, 1, 3].map((v) => helpImg(v, v === 1 ? ' class="dup"' : '')).join('') +
+    '<span class="mark n" aria-label="wrong">✗</span><small>two gummy bears in one row</small>';
 }
 
 function openNew() {
@@ -741,7 +691,7 @@ function openNew() {
   f.diff.value = S.diff;
   updatePreview();
   $('#newClose').hidden = S.won;
-  show('#newgame');
+  show($('#newgame'));
 }
 function updatePreview() {
   const n = +$('#newForm').size.value;
@@ -763,8 +713,8 @@ paletteEl.addEventListener('click', (e) => {
 boardEl.addEventListener('keydown', (e) => {
   const n = S.n;
   const i = focusIdx;
-  const r = geo.rowOf(i),
-    c = geo.colOf(i);
+  const r = geo.rowOf(i);
+  const c = geo.colOf(i);
   const step = {
     ArrowUp: r > 0 ? -n : 0,
     ArrowDown: r < n - 1 ? n : 0,
@@ -779,9 +729,9 @@ boardEl.addEventListener('keydown', (e) => {
     boardEl.children[focusIdx].focus();
     return;
   }
-  const m = /^(?:Digit|Numpad)(\d)$/.exec(e.code),
-    d = m ? +m[1] : NaN;
   if (e.ctrlKey || e.metaKey || e.altKey) return;
+  const m = /^(?:Digit|Numpad)(\d)$/.exec(e.code);
+  const d = m ? +m[1] : NaN;
   if (d >= 1 && d <= n) {
     e.preventDefault();
     selected = null;
@@ -791,64 +741,67 @@ boardEl.addEventListener('keydown', (e) => {
   } else if (['Backspace', 'Delete'].includes(e.key) || d === 0) {
     e.preventDefault();
     clearSquare(i);
-  } else if (e.key === 'n' || e.key === 'N') {
+  } else if (e.key.toLowerCase() === 'n') {
     e.preventDefault();
     toggleNotesMode();
   }
 });
-$('#undoBtn').addEventListener('click', undo);
-$('#redoBtn').addEventListener('click', redo);
-$('#maybeBtn').addEventListener('click', toggleNotesMode);
-$('#hintBtn').addEventListener('click', hint);
-$('#checkBtn').addEventListener('click', check);
+undoBtn.addEventListener('click', undo);
+redoBtn.addEventListener('click', redo);
+maybeBtn.addEventListener('click', toggleNotesMode);
+hintBtn.addEventListener('click', hint);
+checkBtn.addEventListener('click', check);
 $('#helpBtn').addEventListener('click', () => {
   buildHelp();
-  show('#help');
+  show($('#help'));
 });
-$('#setBtn').addEventListener('click', () => show('#settings'));
+$('#setBtn').addEventListener('click', () => show($('#settings')));
 $('#newBtn').addEventListener('click', openNew);
 $('#newForm').addEventListener('change', updatePreview);
 $('#newForm').addEventListener('submit', (e) => {
   e.preventDefault();
   const f = e.target;
-  $('#newgame').hidden = true;
+  $('#newgame').close();
   newGame(+f.size.value, f.diff.value);
   boardEl.children[0].focus({ preventScroll: true });
 });
 $('#winAgain').addEventListener('click', () => {
-  $('#win').hidden = true;
+  $('#win').close();
   newGame(S.n, S.diff);
 });
 $('#winChange').addEventListener('click', () => {
-  $('#win').hidden = true;
+  $('#win').close();
   openNew();
 });
-for (const id of ['#help', '#settings', '#newgame', '#win']) {
-  const o = $(id);
-  o.addEventListener('click', (e) => {
-    if ((e.target === o || e.target.closest('[data-close]')) && canDismiss(id)) hide(id);
+for (const dialog of dialogs) {
+  // a click on the dialog element itself is a click on the backdrop around the card
+  dialog.addEventListener('click', (e) => {
+    if ((e.target === dialog || e.target.closest('[data-close]')) && canDismiss(dialog)) {
+      dialog.close();
+    }
+  });
+  dialog.addEventListener('cancel', (e) => {
+    if (!canDismiss(dialog)) e.preventDefault();
   });
 }
+$('#help').addEventListener('close', () => {
+  settings.seenHelp = true;
+  save();
+});
 document.addEventListener('keydown', (e) => {
-  if ((e.ctrlKey || e.metaKey) && !openOverlay() && S) {
+  if (!S || dialogs.some((d) => d.open)) return;
+  if (e.ctrlKey || e.metaKey) {
     const k = e.key.toLowerCase();
     if (k === 'z' && !e.shiftKey) {
       e.preventDefault();
       undo();
-      return;
-    }
-    if ((k === 'z' && e.shiftKey) || k === 'y') {
+    } else if ((k === 'z' && e.shiftKey) || k === 'y') {
       e.preventDefault();
       redo();
-      return;
     }
-  }
-  if (e.key !== 'Escape') return;
-  const o = openOverlay();
-  if (o) {
-    if (canDismiss(o)) hide(o);
     return;
   }
+  if (e.key !== 'Escape') return;
   if (selected !== null || activeCell !== null) {
     selected = null;
     activeCell = null;
@@ -858,7 +811,6 @@ document.addEventListener('keydown', (e) => {
 });
 $('#helperTg').addEventListener('change', (e) => {
   settings.helper = e.target.checked;
-  settings.helperSet = true;
   render();
   save();
 });
@@ -870,36 +822,28 @@ $('#soundTg').addEventListener('change', (e) => {
 
 // ---------- start ----------
 function start(data) {
-  const saved = (data && data.game && data) || load();
-  if (saved && saved.settings) Object.assign(settings, saved.settings);
-  if (!settings.helperSet) settings.helper = false;
+  const saved = data?.game ? data : load();
+  Object.assign(settings, saved?.settings);
   $('#helperTg').checked = settings.helper;
   $('#soundTg').checked = settings.sound;
-  if (saved && saved.game && SIZES[saved.game.n] && Array.isArray(saved.game.board)) {
+  if (SIZES[saved?.game?.n]) {
     S = saved.game;
     selected = saved.selected ?? null;
     activeCell = saved.activeCell ?? null;
-    focusIdx = saved.focusIdx || 0;
+    focusIdx = saved.focusIdx ?? 0;
     notesMode = !!saved.notesMode;
-    if (!Array.isArray(S.notes)) S.notes = S.board.map(() => 0);
-    S.notes = S.notes.map((m) => m && 1 << noteOf(m));
-    if (!Array.isArray(S.future) || S.history.some((h) => !('to' in h))) {
-      S.history = [];
-      S.future = [];
-    }
     setup();
     say(
       S.won
         ? 'Board complete! Tap New for another.'
         : 'Welcome back! Your board is just as you left it.',
     );
-    save(); // also moves a save from before the rename to the new key
   } else {
     newGame(4, 'easy');
   }
   if (!settings.seenHelp) {
     buildHelp();
-    show('#help');
+    show($('#help'));
   }
 }
 try {
