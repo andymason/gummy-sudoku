@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <radialGradient id="bead" cx="35%" cy="30%" r="75%">
+      <stop offset="0" stop-color="#FFD0E6"/>
+      <stop offset="0.5" stop-color="#FF4FA0"/>
+      <stop offset="1" stop-color="#C4186A"/>
+    </radialGradient>
+    <linearGradient id="leaf" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#9BE07A"/>
+      <stop offset="1" stop-color="#2E9A3A"/>
+    </linearGradient>
+  </defs>
+  <g fill="#9A1254" stroke="#9A1254" stroke-width="8"><circle cx="46" cy="46" r="12"/><circle cx="64" cy="42" r="12"/><circle cx="82" cy="46" r="12"/><circle cx="38" cy="64" r="12"/><circle cx="56" cy="62" r="12"/><circle cx="74" cy="62" r="12"/><circle cx="90" cy="64" r="12"/><circle cx="46" cy="82" r="12"/><circle cx="64" cy="80" r="12"/><circle cx="82" cy="82" r="12"/><circle cx="55" cy="98" r="12"/><circle cx="73" cy="98" r="12"/><circle cx="64" cy="112" r="12"/></g>
+  <circle cx="46" cy="46" r="11" fill="url(#bead)" stroke="#C4186A" stroke-width="1.5"/><circle cx="64" cy="42" r="11" fill="url(#bead)" stroke="#C4186A" stroke-width="1.5"/><circle cx="82" cy="46" r="11" fill="url(#bead)" stroke="#C4186A" stroke-width="1.5"/><circle cx="38" cy="64" r="11" fill="url(#bead)" stroke="#C4186A" stroke-width="1.5"/><circle cx="56" cy="62" r="11" fill="url(#bead)" stroke="#C4186A" stroke-width="1.5"/><circle cx="74" cy="62" r="11" fill="url(#bead)" stroke="#C4186A" stroke-width="1.5"/><circle cx="90" cy="64" r="11" fill="url(#bead)" stroke="#C4186A" stroke-width="1.5"/><circle cx="46" cy="82" r="11" fill="url(#bead)" stroke="#C4186A" stroke-width="1.5"/><circle cx="64" cy="80" r="11" fill="url(#bead)" stroke="#C4186A" stroke-width="1.5"/><circle cx="82" cy="82" r="11" fill="url(#bead)" stroke="#C4186A" stroke-width="1.5"/><circle cx="55" cy="98" r="11" fill="url(#bead)" stroke="#C4186A" stroke-width="1.5"/><circle cx="73" cy="98" r="11" fill="url(#bead)" stroke="#C4186A" stroke-width="1.5"/><circle cx="64" cy="112" r="11" fill="url(#bead)" stroke="#C4186A" stroke-width="1.5"/>
+  <path d="M64 30 C54 18 40 18 36 26 C46 30 54 32 64 30 C74 32 82 30 92 26 C88 18 74 18 64 30 Z" fill="url(#leaf)" stroke="#1F6E2A" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M64 30 v-12" stroke="#1F6E2A" stroke-width="4" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,1235 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#E0457B" data-pwa />
+    <link rel="manifest" href="manifest.webmanifest" data-pwa />
+    <link rel="icon" href="icons/app.svg" type="image/svg+xml" data-pwa />
+    <link rel="apple-touch-icon" href="icons/app-192.png" data-pwa />
+    <title>Gummy Sudoku</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap"
+    />
+    <style>
+      :root {
+        --ground: #fdeef3;
+        --panel: #ffffff;
+        --boxA: #ffffff;
+        --boxB: #fce6ee;
+        --line: #edc7d6;
+        --thick: #6d2753;
+        --ink: #3a1631;
+        --muted: #8a5b78;
+        --accent: #e0457b;
+        --accent-ink: #ffffff;
+        --same: #ffe6a8;
+        --peer: rgba(224, 69, 123, 0.1);
+        --active: #ffd36b;
+        --focus: #f2a007;
+        --ok: #1f9d55;
+        --bad: #d62839;
+        --bad-bg: #ffd6dc;
+        --hatch: rgba(109, 39, 83, 0.13);
+        --note-edge: rgba(109, 39, 83, 0.55);
+        --shadow: 0 10px 28px rgba(109, 39, 83, 0.16);
+        --scrim: rgba(58, 22, 49, 0.45);
+        --display: 'Fredoka', 'Baloo 2', 'Trebuchet MS', system-ui, sans-serif;
+        --body: 'Nunito', system-ui, -apple-system, 'Segoe UI', sans-serif;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) {
+          color-scheme: dark;
+          --ground: #1b1020;
+          --panel: #28172c;
+          --boxA: #2b1930;
+          --boxB: #382040;
+          --line: #4e2f4b;
+          --thick: #f28db5;
+          --ink: #fbe8f1;
+          --muted: #c79bb5;
+          --accent: #ff6fa0;
+          --accent-ink: #2a0f1e;
+          --same: #5e4515;
+          --peer: rgba(255, 111, 160, 0.12);
+          --active: #8a6414;
+          --focus: #ffc24a;
+          --ok: #4ed88a;
+          --bad: #ff6b7a;
+          --bad-bg: #5a1f2a;
+          --hatch: rgba(242, 141, 181, 0.14);
+          --note-edge: rgba(0, 0, 0, 0.6);
+          --shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+          --scrim: rgba(0, 0, 0, 0.6);
+        }
+      }
+      :root[data-theme='dark'] {
+        color-scheme: dark;
+        --ground: #1b1020;
+        --panel: #28172c;
+        --boxA: #2b1930;
+        --boxB: #382040;
+        --line: #4e2f4b;
+        --thick: #f28db5;
+        --ink: #fbe8f1;
+        --muted: #c79bb5;
+        --accent: #ff6fa0;
+        --accent-ink: #2a0f1e;
+        --same: #5e4515;
+        --peer: rgba(255, 111, 160, 0.12);
+        --active: #8a6414;
+        --focus: #ffc24a;
+        --ok: #4ed88a;
+        --bad: #ff6b7a;
+        --bad-bg: #5a1f2a;
+        --hatch: rgba(242, 141, 181, 0.14);
+        --note-edge: rgba(0, 0, 0, 0.6);
+        --shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+        --scrim: rgba(0, 0, 0, 0.6);
+      }
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      html,
+      body {
+        min-height: 100%;
+      }
+      body {
+        margin: 0;
+        background: var(--ground);
+        color: var(--ink);
+        font: 600 16px/1.45 var(--body);
+        -webkit-tap-highlight-color: transparent;
+      }
+      button {
+        font: inherit;
+        color: inherit;
+      }
+      button:focus-visible {
+        outline: 3px solid var(--focus);
+        outline-offset: 2px;
+      }
+      svg {
+        flex: none;
+      }
+
+      .app {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding-inline: 16px;
+        padding-block: 8px 16px;
+        display: grid;
+        gap: 10px;
+      }
+      .app > * {
+        min-width: 0;
+      }
+
+      /* header */
+      header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .brand {
+        flex: 1;
+        min-width: 0;
+        display: grid;
+      }
+      h1 {
+        margin: 0;
+        font: 700 clamp(18px, 5vw, 26px)/1.05 var(--display);
+        letter-spacing: 0.01em;
+        white-space: nowrap;
+        overflow: hidden;
+        background: repeating-linear-gradient(-55deg, #e0457b 0 10px, #ff8fb4 10px 17px);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        filter: drop-shadow(0 2px 0 var(--thick));
+      }
+      .mode {
+        font: 600 12px/1.3 var(--display);
+        color: var(--muted);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        margin-top: 3px;
+      }
+      .ibtn {
+        width: 40px;
+        height: 40px;
+        border: 0;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        background: var(--panel);
+        box-shadow: 0 0 0 2px var(--line) inset;
+        cursor: pointer;
+        padding: 0;
+        transition: transform 0.12s;
+      }
+      .ibtn svg {
+        width: 22px;
+        height: 22px;
+      }
+      .ibtn:active,
+      .btn:active {
+        transform: scale(0.94);
+      }
+      .btn {
+        border: 0;
+        border-radius: 999px;
+        height: 40px;
+        padding: 0 14px;
+        font: 600 16px var(--display);
+        cursor: pointer;
+        background: var(--panel);
+        color: var(--ink);
+        box-shadow: 0 0 0 2px var(--line) inset;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        transition: transform 0.12s;
+      }
+      .btn svg {
+        width: 18px;
+        height: 18px;
+      }
+      .btn.primary {
+        background: var(--accent);
+        color: var(--accent-ink);
+        box-shadow: 0 3px 0 var(--thick);
+      }
+      .btn:disabled {
+        opacity: 0.45;
+        cursor: default;
+        transform: none;
+      }
+
+      /* board */
+      .play {
+        display: grid;
+        gap: 6px;
+        justify-items: center;
+      }
+      .boardwrap {
+        width: min(100%, 720px, calc(100dvh - 356px));
+        min-width: min(100%, 250px);
+      }
+      .board {
+        --n: 4;
+        display: grid;
+        grid-template-columns: repeat(var(--n), minmax(0, 1fr));
+        width: 100%;
+        aspect-ratio: 1;
+        border: 3px solid var(--thick);
+        border-radius: 14px;
+        overflow: hidden;
+        background: var(--panel);
+        box-shadow: var(--shadow);
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: manipulation;
+      }
+      .cell {
+        position: relative;
+        border: 0;
+        padding: 0;
+        margin: 0;
+        display: grid;
+        place-items: center;
+        aspect-ratio: 1;
+        min-width: 0;
+        background: var(--boxA);
+        border-right: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+        cursor: pointer;
+      }
+      .cell.alt {
+        background: var(--boxB);
+      }
+      .cell.bx {
+        border-right: 3px solid var(--thick);
+      }
+      .cell.by {
+        border-bottom: 3px solid var(--thick);
+      }
+      .cell.ex {
+        border-right: 0;
+      }
+      .cell.ey {
+        border-bottom: 0;
+      }
+      .cell img {
+        width: 82%;
+        height: 82%;
+        object-fit: contain;
+        pointer-events: none;
+        filter: drop-shadow(0 2px 1px rgba(0, 0, 0, 0.18));
+      }
+      .cell.peer {
+        box-shadow: inset 0 0 0 999px var(--peer);
+      }
+      .cell.blocked {
+        background-image: repeating-linear-gradient(45deg, var(--hatch) 0 4px, transparent 4px 8px);
+      }
+      .cell.ghost img:first-child {
+        opacity: 0.22;
+        filter: none;
+      }
+      .cell.same {
+        background: var(--same);
+      }
+      .cell.active {
+        background: var(--active);
+        box-shadow: none;
+      }
+      .cell.bad,
+      .cell.wrong {
+        background: var(--bad-bg);
+      }
+      .cell::after {
+        content: '';
+        position: absolute;
+        inset: 2px;
+        border-radius: 8px;
+        pointer-events: none;
+        border: 3px solid transparent;
+      }
+      .cell.active::after {
+        border-color: var(--focus);
+      }
+      .cell.bad::after,
+      .cell.wrong::after {
+        border-color: var(--bad);
+      }
+      .cell.hint::after {
+        border: 3px dashed var(--accent);
+        animation: glow 1.2s ease-in-out infinite;
+      }
+      .cell.hint img:first-child {
+        opacity: 0.6;
+        filter: none;
+        animation: bob 1.2s ease-in-out infinite;
+      }
+      .cell .notes {
+        position: absolute;
+        top: 3px;
+        right: 3px;
+        width: calc(34% * var(--nk, 1));
+        height: auto;
+        aspect-ratio: 1;
+        pointer-events: none;
+        object-fit: contain;
+        /* sticker outline: crisp white edge, then a thin plum line, both following the gummy's shape */
+        filter: drop-shadow(1px 0 0 #fff) drop-shadow(-1px 0 0 #fff) drop-shadow(0 1px 0 #fff)
+          drop-shadow(0 -1px 0 #fff) drop-shadow(1px 0 0 var(--note-edge))
+          drop-shadow(-1px 0 0 var(--note-edge)) drop-shadow(0 1px 0 var(--note-edge))
+          drop-shadow(0 -1px 0 var(--note-edge));
+      }
+      .cell .burst {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 2;
+      }
+      .cell .burst::before {
+        content: '';
+        position: absolute;
+        inset: 16%;
+        border-radius: 50%;
+        border: 3px solid var(--accent);
+        animation: ring 0.6s ease-out forwards;
+      }
+      .cell .burst i {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 34%;
+        height: 34%;
+        margin: -17% 0 0 -17%;
+        filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.35));
+        background: var(--c);
+        clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+        transform: rotate(var(--a)) translateY(0) scale(0.2);
+        opacity: 0;
+        animation: fly 0.7s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
+      }
+      .cell.yum img {
+        animation: jelly 0.55s ease;
+      }
+      @keyframes ring {
+        from {
+          transform: scale(0.4);
+          opacity: 0.95;
+        }
+        to {
+          transform: scale(1.4);
+          opacity: 0;
+        }
+      }
+      @keyframes fly {
+        20% {
+          opacity: 1;
+        }
+        to {
+          transform: rotate(var(--a)) translateY(calc(var(--d) * -1)) scale(0.9);
+          opacity: 0;
+        }
+      }
+      @keyframes jelly {
+        0% {
+          transform: scale(0.55);
+        }
+        35% {
+          transform: scale(1.2, 0.84);
+        }
+        55% {
+          transform: scale(0.92, 1.1);
+        }
+        75% {
+          transform: scale(1.04, 0.97);
+        }
+        100% {
+          transform: none;
+        }
+      }
+      .cell.given::before {
+        content: '';
+        position: absolute;
+        left: 3px;
+        bottom: 3px;
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: var(--thick);
+        opacity: 0.35;
+      }
+      .cell:focus-visible {
+        outline: 3px solid var(--focus);
+        outline-offset: -3px;
+        z-index: 1;
+      }
+      .cell.placed img {
+        animation: drop 0.28s cubic-bezier(0.3, 1.6, 0.5, 1);
+      }
+      .cell.shake img {
+        animation: shake 0.45s;
+      }
+      .cell.sparkle {
+        animation: sparkle 0.75s;
+      }
+      @keyframes drop {
+        from {
+          transform: translateY(-40%) scale(0.6);
+          opacity: 0.3;
+        }
+        to {
+          transform: none;
+          opacity: 1;
+        }
+      }
+      @keyframes shake {
+        0%,
+        100% {
+          transform: none;
+        }
+        20% {
+          transform: translateX(-18%) rotate(-8deg);
+        }
+        40% {
+          transform: translateX(16%) rotate(7deg);
+        }
+        60% {
+          transform: translateX(-10%);
+        }
+        80% {
+          transform: translateX(6%);
+        }
+      }
+      @keyframes sparkle {
+        0% {
+          box-shadow: inset 0 0 0 0 transparent;
+        }
+        40% {
+          box-shadow: inset 0 0 0 999px rgba(255, 214, 102, 0.75);
+        }
+        100% {
+          box-shadow: inset 0 0 0 0 transparent;
+        }
+      }
+      @keyframes bob {
+        50% {
+          transform: scale(1.1);
+        }
+      }
+      @keyframes glow {
+        50% {
+          opacity: 0.35;
+        }
+      }
+      .cell.hint.fading::after,
+      .cell.hint.fading img:first-child {
+        animation: fadeout 0.6s ease forwards;
+      }
+      @keyframes fadeout {
+        to {
+          opacity: 0;
+        }
+      }
+
+      .msg {
+        min-height: 2.6em;
+        margin: 0;
+        display: grid;
+        place-items: center;
+        text-align: center;
+        font: 600 15px/1.3 var(--display);
+        color: var(--ink);
+        max-width: 34ch;
+        text-wrap: balance;
+      }
+      .msg.bad {
+        color: var(--bad);
+      }
+      .msg.ok {
+        color: var(--ok);
+      }
+
+      /* tray + actions */
+      .side {
+        display: grid;
+        gap: 10px;
+        align-content: start;
+        width: 100%;
+        max-width: 720px;
+        justify-self: center;
+      }
+      .tray {
+        background: var(--panel);
+        border-radius: 18px;
+        padding: 10px 8px 8px;
+        box-shadow: 0 0 0 2px var(--line) inset;
+      }
+      .palette {
+        --pc: 5;
+        display: grid;
+        grid-template-columns: repeat(var(--pc), minmax(0, 1fr));
+        gap: 8px 6px;
+        justify-items: center;
+      }
+      .pbtn {
+        position: relative;
+        width: 100%;
+        max-width: 62px;
+        aspect-ratio: 1;
+        border: 0;
+        border-radius: 16px;
+        background: var(--boxA);
+        box-shadow:
+          0 0 0 2px var(--line) inset,
+          0 3px 0 var(--line);
+        cursor: pointer;
+        display: grid;
+        place-items: center;
+        padding: 0;
+        transition:
+          transform 0.12s,
+          box-shadow 0.12s,
+          opacity 0.15s;
+      }
+      .pbtn img {
+        width: 80%;
+        height: 80%;
+        object-fit: contain;
+        pointer-events: none;
+        filter: drop-shadow(0 2px 1px rgba(0, 0, 0, 0.2));
+      }
+      .pbtn[aria-pressed='true'] {
+        box-shadow:
+          0 0 0 3px var(--accent) inset,
+          0 3px 0 var(--thick);
+        transform: translateY(-2px);
+        background: var(--same);
+      }
+      .pbtn .badge {
+        position: absolute;
+        top: -5px;
+        right: -5px;
+        min-width: 20px;
+        height: 20px;
+        padding: 0 5px;
+        border-radius: 10px;
+        background: var(--thick);
+        color: var(--ground);
+        font: 800 12px/20px var(--body);
+        text-align: center;
+      }
+      .pbtn.done img {
+        opacity: 0.35;
+      }
+      .pbtn.done .badge {
+        background: var(--ok);
+        color: #fff;
+      }
+      .pbtn.nope {
+        opacity: 0.4;
+        background-image: repeating-linear-gradient(45deg, var(--hatch) 0 4px, transparent 4px 8px);
+      }
+      .pbtn.eraser svg {
+        width: 46%;
+        height: 46%;
+        color: var(--muted);
+      }
+      .actions {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 6px;
+      }
+      .actions .btn {
+        position: relative;
+        flex-direction: column;
+        height: 54px;
+        padding: 0;
+        gap: 1px;
+        border-radius: 16px;
+        font-size: 13px;
+      }
+      .actions .btn svg {
+        width: 21px;
+        height: 21px;
+      }
+      .actions .btn[aria-pressed='true'] {
+        background: var(--accent);
+        color: var(--accent-ink);
+        box-shadow: 0 3px 0 var(--thick);
+      }
+      .actions .pill {
+        position: absolute;
+        top: -6px;
+        right: -3px;
+        padding: 0 5px;
+        border-radius: 8px;
+        font: 800 10px/16px var(--body);
+        background: var(--line);
+        color: var(--muted);
+      }
+      .actions [aria-pressed='true'] .pill {
+        background: var(--thick);
+        color: var(--ground);
+      }
+      .tray.notes {
+        box-shadow: 0 0 0 3px var(--accent) inset;
+      }
+      .tray.notes .pbtn img {
+        width: 50%;
+        height: 50%;
+        transform: translate(34%, -34%);
+      }
+
+      /* overlays */
+      .overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 20;
+        background: var(--scrim);
+        display: grid;
+        place-items: center;
+        padding-inline: 16px;
+        padding-block: max(16px, env(safe-area-inset-top, 0px))
+          max(16px, env(safe-area-inset-bottom, 0px));
+        overflow-y: auto;
+      }
+      .card {
+        position: relative;
+        background: var(--panel);
+        color: var(--ink);
+        border-radius: 22px;
+        padding: 20px 18px 18px;
+        width: 100%;
+        max-width: 440px;
+        box-shadow: var(--shadow);
+        display: grid;
+        gap: 12px;
+        font-weight: 600;
+      }
+      .card h2 {
+        margin: 0;
+        padding-right: 40px;
+        font: 700 26px/1.1 var(--display);
+        color: var(--accent);
+        text-wrap: balance;
+      }
+      .card p {
+        margin: 0;
+      }
+      .card .x {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        width: 36px;
+        height: 36px;
+      }
+      .card .x svg {
+        width: 18px;
+        height: 18px;
+      }
+      .rules {
+        display: grid;
+        gap: 10px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+      .rules li {
+        display: grid;
+        gap: 4px;
+      }
+      .rules b {
+        font: 600 17px var(--display);
+      }
+      .rules span {
+        color: var(--muted);
+        font-size: 15px;
+      }
+      .ex-row {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .ex-row img {
+        width: 32px;
+        height: 32px;
+        object-fit: contain;
+        background: var(--boxB);
+        border-radius: 8px;
+        padding: 3px;
+      }
+      .ex-row .mark {
+        font: 700 20px var(--display);
+        margin-left: 4px;
+      }
+      .ex-row .mark.y {
+        color: var(--ok);
+      }
+      .ex-row .mark.n {
+        color: var(--bad);
+      }
+      .ex-row img.dup {
+        box-shadow: 0 0 0 3px var(--bad) inset;
+      }
+      .ex-row small {
+        color: var(--muted);
+        font-size: 14px;
+      }
+      .how {
+        background: var(--boxB);
+        border-radius: 14px;
+        padding: 10px 12px;
+        display: grid;
+        gap: 6px;
+        font-size: 15px;
+      }
+      .how p {
+        margin: 0;
+      }
+      .seg {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+      }
+      .seg label {
+        position: relative;
+        cursor: pointer;
+      }
+      .seg input {
+        position: absolute;
+        opacity: 0;
+        inset: 0;
+        margin: 0;
+        cursor: pointer;
+      }
+      .seg span {
+        display: grid;
+        justify-items: center;
+        gap: 1px;
+        border-radius: 14px;
+        padding: 9px 4px;
+        background: var(--boxA);
+        box-shadow: 0 0 0 2px var(--line) inset;
+        font: 600 16px var(--display);
+        text-align: center;
+      }
+      .seg span small {
+        font: 700 12px var(--body);
+        color: var(--muted);
+      }
+      .seg input:checked + span {
+        box-shadow: 0 0 0 3px var(--accent) inset;
+        background: var(--same);
+      }
+      .seg input:focus-visible + span {
+        outline: 3px solid var(--focus);
+        outline-offset: 2px;
+      }
+      .fieldlabel {
+        font: 600 12px var(--display);
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: -4px;
+      }
+      .preview {
+        display: flex;
+        gap: 2px;
+        justify-content: center;
+        flex-wrap: wrap;
+        min-height: 28px;
+      }
+      .preview img {
+        width: 28px;
+        height: 28px;
+        object-fit: contain;
+      }
+      .cardrow {
+        display: flex;
+        gap: 8px;
+      }
+      .cardrow .btn {
+        flex: 1;
+        white-space: nowrap;
+        padding: 0 10px;
+      }
+      .tg {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        cursor: pointer;
+        padding: 10px 0;
+        border-top: 1px solid var(--line);
+      }
+      .tg:first-of-type {
+        border-top: 0;
+      }
+      .tg b {
+        display: block;
+        font: 600 17px var(--display);
+      }
+      .tg small {
+        display: block;
+        color: var(--muted);
+        font-size: 14px;
+        line-height: 1.3;
+      }
+      .tg input {
+        appearance: none;
+        -webkit-appearance: none;
+        width: 48px;
+        height: 28px;
+        border-radius: 14px;
+        background: var(--line);
+        position: relative;
+        cursor: pointer;
+        flex: none;
+        margin: 0;
+        transition: background 0.15s;
+      }
+      .tg input::after {
+        content: '';
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: #fff;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        transition: transform 0.15s;
+      }
+      .tg input:checked {
+        background: var(--accent);
+      }
+      .tg input:checked::after {
+        transform: translateX(20px);
+      }
+      .tg input:focus-visible {
+        outline: 3px solid var(--focus);
+        outline-offset: 2px;
+      }
+      .win {
+        text-align: center;
+        justify-items: center;
+      }
+      .win h2 {
+        padding: 0;
+        font-size: 50px;
+        filter: drop-shadow(0 3px 0 var(--thick));
+      }
+      #confetti {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 30;
+      }
+
+      @media (min-width: 480px) {
+        h1 {
+          font-size: 32px;
+        }
+        .pbtn {
+          max-width: 70px;
+        }
+      }
+      @media (min-width: 600px) and (max-width: 859px) {
+        .pbtn {
+          max-width: 88px;
+        }
+      }
+      @media (min-width: 860px) {
+        .app {
+          grid-template-columns: minmax(0, 1fr) 330px;
+          column-gap: 28px;
+          align-items: start;
+          padding-block: 16px 24px;
+        }
+        header {
+          grid-column: 1/-1;
+        }
+        .boardwrap {
+          width: min(100%, 600px, calc(100dvh - 150px));
+          min-width: 320px;
+        }
+        .side {
+          max-width: none;
+          margin-top: 4px;
+        }
+        .tray {
+          padding: 14px 12px 12px;
+        }
+        .palette {
+          gap: 12px 8px;
+        }
+      }
+      @media (orientation: landscape) and (max-height: 560px) {
+        .app {
+          max-width: none;
+          grid-template-columns: auto minmax(0, 1fr);
+          grid-template-rows: auto auto 1fr;
+          grid-template-areas: 'board header' 'board msg' 'board side';
+          column-gap: 20px;
+          row-gap: 6px;
+          align-items: start;
+          padding-block: 8px;
+        }
+        .play {
+          display: contents;
+        }
+        .boardwrap {
+          grid-area: board;
+          width: calc(100dvh - 16px);
+          min-width: 0;
+        }
+        header {
+          grid-area: header;
+        }
+        .msg {
+          grid-area: msg;
+          justify-self: center;
+        }
+        .side {
+          grid-area: side;
+          max-width: none;
+          margin: 0;
+        }
+        h1 {
+          font-size: 20px;
+        }
+        .pbtn {
+          max-width: 52px;
+        }
+        .actions .btn {
+          height: 46px;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation: none !important;
+          transition: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header>
+        <div class="brand">
+          <h1>Gummy Sudoku</h1>
+          <div class="mode" id="mode">Mini 4×4 · Easy</div>
+        </div>
+        <button
+          class="ibtn"
+          id="helpBtn"
+          type="button"
+          aria-label="How to play"
+          title="How to play"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.4"
+            stroke-linecap="round"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="9.5" />
+            <path d="M9.3 9.4a2.9 2.9 0 0 1 5.5 1.1c0 1.9-2.8 2.3-2.8 3.9" />
+            <circle cx="12" cy="17.4" r=".7" fill="currentColor" />
+          </svg>
+        </button>
+        <button class="ibtn" id="setBtn" type="button" aria-label="Settings" title="Settings">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="3" />
+            <path
+              d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"
+            />
+          </svg>
+        </button>
+        <button class="btn primary" id="newBtn" type="button">New</button>
+      </header>
+
+      <section class="play" aria-label="Game board">
+        <div class="boardwrap">
+          <div class="board" id="board" role="grid" aria-label="Gummy board"></div>
+        </div>
+        <p class="msg" id="msg" aria-live="polite"></p>
+      </section>
+
+      <aside class="side">
+        <div class="tray" id="tray">
+          <div class="palette" id="palette" role="toolbar" aria-label="Gummies"></div>
+        </div>
+        <div class="actions">
+          <button class="btn" id="undoBtn" type="button">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.4"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M9 14 4 9l5-5" />
+              <path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11" /></svg
+            >Undo
+          </button>
+          <button class="btn" id="redoBtn" type="button">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.4"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="m15 14 5-5-5-5" />
+              <path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13" /></svg
+            >Redo
+          </button>
+          <button class="btn" id="maybeBtn" type="button" aria-pressed="false">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z" />
+              <path d="m15 5 4 4" /></svg
+            >Maybe<span class="pill" id="maybePill">OFF</span>
+          </button>
+          <button class="btn" id="hintBtn" type="button">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.4"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V16h8v-1.3A7 7 0 0 0 12 2z" /></svg
+            >Hint
+          </button>
+          <button class="btn" id="checkBtn" type="button">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="m4 12.5 5 5L20 6.5" /></svg
+            >Check
+          </button>
+        </div>
+      </aside>
+    </div>
+
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <symbol id="i-x" viewBox="0 0 24 24">
+        <path
+          d="M6 6l12 12M18 6 6 18"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2.6"
+          stroke-linecap="round"
+        />
+      </symbol>
+    </svg>
+
+    <!-- How to play -->
+    <div class="overlay" id="help" hidden>
+      <div class="card" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+        <button class="ibtn x" type="button" data-close aria-label="Close">
+          <svg aria-hidden="true"><use href="#i-x" /></svg>
+        </button>
+        <h2 id="helpTitle">How to play</h2>
+        <ul class="rules">
+          <li>
+            <b>Every row needs one of each gummy</b>
+            <div class="ex-row" id="exGood"></div>
+          </li>
+          <li><b>Every column too</b><span>Top to bottom works just like a row.</span></li>
+          <li><b>And every box</b><span>Boxes are the squares with thick edges.</span></li>
+          <li>
+            <b>No doubles!</b>
+            <div class="ex-row" id="exBad"></div>
+          </li>
+        </ul>
+        <div class="how">
+          <p>
+            <strong>Tap a square, then a gummy</strong> to fill it. Or pick a gummy first, then tap
+            squares.
+          </p>
+          <p>
+            <strong>Not sure?</strong> Tap <strong>Maybe</strong> to jot a small reminder in a
+            square's corner.
+          </p>
+          <p>
+            <strong>Stuck?</strong> Try <strong>Hint</strong>, or turn on
+            <strong>Show where it fits</strong> in settings.
+          </p>
+          <p>Gummies with a small dot were there from the start.</p>
+        </div>
+        <button class="btn primary" type="button" data-close>Let's play</button>
+      </div>
+    </div>
+
+    <!-- Settings -->
+    <div class="overlay" id="settings" hidden>
+      <div class="card" role="dialog" aria-modal="true" aria-labelledby="setTitle">
+        <button class="ibtn x" type="button" data-close aria-label="Close">
+          <svg aria-hidden="true"><use href="#i-x" /></svg>
+        </button>
+        <h2 id="setTitle">Settings</h2>
+        <div>
+          <label class="tg" for="helperTg"
+            ><span
+              ><b>Show where it fits</b
+              ><small
+                >Stripes the squares where your gummy can't go, and greys out gummies that can't go
+                in your square.</small
+              ></span
+            ><input type="checkbox" id="helperTg"
+          /></label>
+          <label class="tg" for="soundTg"
+            ><span><b>Sounds</b><small>Pops, chimes and a fanfare when you win.</small></span
+            ><input type="checkbox" id="soundTg" checked
+          /></label>
+        </div>
+      </div>
+    </div>
+
+    <!-- New game -->
+    <div class="overlay" id="newgame" hidden>
+      <form class="card" id="newForm" role="dialog" aria-modal="true" aria-labelledby="newTitle">
+        <button class="ibtn x" type="button" data-close id="newClose" aria-label="Close">
+          <svg aria-hidden="true"><use href="#i-x" /></svg>
+        </button>
+        <h2 id="newTitle">New game</h2>
+        <div class="fieldlabel" id="sizeLbl">Board size</div>
+        <div class="seg" role="radiogroup" aria-labelledby="sizeLbl">
+          <label
+            ><input type="radio" name="size" id="size4" value="4" /><span
+              >Mini<small>4×4</small></span
+            ></label
+          >
+          <label
+            ><input type="radio" name="size" id="size6" value="6" /><span
+              >Medium<small>6×6</small></span
+            ></label
+          >
+          <label
+            ><input type="radio" name="size" id="size9" value="9" /><span
+              >Big<small>9×9</small></span
+            ></label
+          >
+        </div>
+        <div class="preview" id="preview" aria-hidden="true"></div>
+        <div class="fieldlabel" id="diffLbl">How tricky?</div>
+        <div class="seg" role="radiogroup" aria-labelledby="diffLbl">
+          <label><input type="radio" name="diff" id="diffE" value="easy" /><span>Easy</span></label>
+          <label
+            ><input type="radio" name="diff" id="diffM" value="medium" /><span>Medium</span></label
+          >
+          <label><input type="radio" name="diff" id="diffH" value="hard" /><span>Hard</span></label>
+        </div>
+        <button class="btn primary" type="submit">Start</button>
+      </form>
+    </div>
+
+    <!-- Win -->
+    <div class="overlay" id="win" hidden>
+      <div class="card win" role="dialog" aria-modal="true" aria-labelledby="winTitle">
+        <h2 id="winTitle">Sweet!</h2>
+        <p id="winText">You filled the whole board.</p>
+        <div class="cardrow" style="width: 100%">
+          <button class="btn" type="button" id="winChange">Change game</button>
+          <button class="btn primary" type="button" id="winAgain">Play again</button>
+        </div>
+      </div>
+    </div>
+    <canvas id="confetti" hidden></canvas>
+
+    <script type="module" src="src/app.js"></script>
+  </body>
+</html>

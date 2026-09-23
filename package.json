@@ -1,0 +1,26 @@
+{
+  "name": "gummy-sudoku",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sudoku with sweets instead of numbers.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
+    "check": "npm run format:check && npm run lint && npm test",
+    "build:artifact": "node scripts/build-artifact.js"
+  },
+  "devDependencies": {
+    "oxfmt": "0.70.0",
+    "oxlint": "1.85.0",
+    "vitest": "5.0.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

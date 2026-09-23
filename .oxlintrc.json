@@ -1,0 +1,53 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["eslint", "unicorn", "oxc", "import", "promise", "vitest"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "perf": "warn"
+  },
+  "env": {
+    "browser": true,
+    "es2024": true
+  },
+  "rules": {
+    "eqeqeq": "error",
+    "no-var": "error",
+    "prefer-const": "error",
+    "no-console": "warn",
+    "no-param-reassign": "off",
+    "no-unused-vars": [
+      "error",
+      {
+        "caughtErrors": "none",
+        "ignoreRestSiblings": true
+      }
+    ],
+    "import/no-cycle": "error",
+    "import/no-self-import": "error",
+    "unicorn/prefer-node-protocol": "error",
+    "vitest/expect-expect": "error",
+    "vitest/no-disabled-tests": "warn",
+    "vitest/no-focused-tests": "error"
+  },
+  "overrides": [
+    {
+      "files": ["sw.js"],
+      "env": {
+        "browser": false,
+        "serviceworker": true
+      }
+    },
+    {
+      "files": ["scripts/**", "*.config.js"],
+      "env": {
+        "browser": false,
+        "node": true
+      },
+      "rules": {
+        "no-console": "off"
+      }
+    }
+  ],
+  "ignorePatterns": ["dist/**", "node_modules/**"]
+}
