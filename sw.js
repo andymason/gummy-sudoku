@@ -1,8 +1,7 @@
 // Offline cache for Gummy Sudoku. Bump VERSION when files change.
-const VERSION = 'gummy-sudoku-v10';
+const VERSION = 'gummy-sudoku-v11';
 const FILES = [
   './',
-  'index.html',
   'src/app.js',
   'src/sudoku.js',
   'manifest.webmanifest',

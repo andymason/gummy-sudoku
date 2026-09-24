@@ -42,14 +42,16 @@ background) and update the `GUMMIES` list in `src/sudoku.js`.
 - `src/sudoku.js` – the game rules: puzzle generator, solver, hints, maybes and undo. Pure functions, no DOM.
 - `src/app.js` – everything on screen: board, tray, buttons, sounds and saving.
 - `manifest.webmanifest`, `sw.js` – make it an installable, offline-ready PWA
-  when served over HTTPS (for example GitHub Pages).
+  when served over HTTPS.
+- `scripts/build-site.js` – copies the served files into `dist/site` for Cloudflare.
+- `wrangler.jsonc` – Cloudflare Workers config: serves `dist/site` as static assets.
 - `scripts/build-artifact.js` – writes `dist/artifact.html`, the single-file version published
   as a Claude Artifact (drops the PWA-only tags marked `data-pwa` and inlines both modules).
-- `tests/` – Vitest tests for the game rules and the artifact build.
+- `tests/` – Vitest tests for the game rules and both builds.
 
 ## Development
 
-Needs Node.js 20 or newer.
+Needs Node.js 22 or newer.
 
 ```sh
 npm install
@@ -58,6 +60,7 @@ npm test               # Vitest, once
 npm run test:watch     # Vitest, re-running on save
 npm run lint           # oxlint
 npm run format         # oxfmt, rewrites files
+npm run build          # dist/site, the files Cloudflare serves
 npm run build:artifact # dist/artifact.html
 ```
 
@@ -67,6 +70,20 @@ The page uses ES modules, so it needs a web server rather than opening the file 
 python3 -m http.server
 # open http://localhost:8000
 ```
+
+## Deploying
+
+The site is hosted as a Cloudflare Worker with [static assets](https://developers.cloudflare.com/workers/static-assets/)
+and no Worker script. [Workers Builds](https://developers.cloudflare.com/workers/ci-cd/builds/) deploys every
+push to `main`. In the Worker's **Settings > Build**:
+
+- **Build command:** `npm run check && npm run build`
+- **Deploy command:** `npx wrangler deploy` (the default)
+
+The Worker's name in the dashboard must match `name` in `wrangler.jsonc` (`gummy-sudoku`).
+To deploy by hand instead, run `npm run deploy` (Wrangler asks you to log in the first time).
+
+To preview the Cloudflare build locally: `npm run build && npx wrangler dev`.
 
 Tooling: [oxlint](https://oxc.rs/docs/guide/usage/linter) (`.oxlintrc.json`: correctness errors,
 suspicious and performance warnings, plus the unicorn, import, promise and vitest plugins),
