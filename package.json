@@ -13,14 +13,17 @@
     "format": "oxfmt",
     "format:check": "oxfmt --check",
     "check": "npm run format:check && npm run lint && npm test",
-    "build:artifact": "node scripts/build-artifact.js"
+    "build:artifact": "node scripts/build-artifact.js",
+    "build": "node scripts/build-site.js",
+    "deploy": "npm run build && wrangler deploy"
   },
   "devDependencies": {
     "oxfmt": "0.70.0",
     "oxlint": "1.85.0",
-    "vitest": "5.0.1"
+    "vitest": "5.0.1",
+    "wrangler": "4.137.0"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   }
 }
