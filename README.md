@@ -1,5 +1,9 @@
 # Gummy Sudoku
 
+<img src="docs/screenshot.png" alt="A Mini 4×4 Gummy Sudoku puzzle with red bears, blue fish, orange rings and yellow stars on the board, and the gummy picker below" width="360">
+
+**[Play it online](https://gummy-sudoku.coderonfire.workers.dev/)**
+
 Sudoku with gummy sweets instead of numbers. Made for someone who finds number
 sudoku confusing but loves colourful match-three mobile games.
 A personal, non-commercial project.
