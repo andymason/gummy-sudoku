@@ -20,7 +20,7 @@
   "devDependencies": {
     "oxfmt": "0.70.0",
     "oxlint": "1.85.0",
-    "vitest": "5.0.1",
+    "vitest": "5.0.5",
     "wrangler": "4.137.0"
   },
   "engines": {
